@@ -44,22 +44,61 @@ Brim = function Brim (config) {
 
         // Disable window scrolling when in minimal view.
         // @see http://stackoverflow.com/a/26853900/368691
-
         (function () {
-            var firstMove;
 
-            global.document.addEventListener('touchstart', function () {
-                firstMove = true;
+            var xStart, yStart = 0;
+
+
+            document.addEventListener('touchstart',function(e) {
+                xStart = e.touches[0].screenX;
+                yStart = e.touches[0].screenY;
             });
 
-            global.document.addEventListener('touchmove', function (e) {
-                if (viewport.isMinimalView() && firstMove) {
-                    e.preventDefault();
+            document.addEventListener('touchmove', function (e) {
+                if (!viewport.isMinimalView()) return;
+
+                var found = false;
+                var xMovement = Math.abs(e.touches[0].screenX - xStart);
+                var yMovement = Math.abs(e.touches[0].screenY - yStart);
+                if((yMovement * 3) > xMovement) {
+
+                    var elements = document.querySelectorAll('body *'), i ;
+
+                    for (i = 0; i < elements.length; ++i) {
+                        var element = elements[i];
+                        var css = getComputedStyle(element);
+                        var scrollable = css.overflow == 'scroll' ||
+                                css.overflow ==  'auto' ||
+                                css.overflowY == 'scroll' ||
+                                css.overflowY ==  'auto';
+                        //33554428 magic cropped number for the 99999999999999px treadmill
+                        if ((element.offsetHeight < element.scrollHeight) && element.scrollHeight < 33554428
+                            && scrollable) {
+                            // your element have overflow and are scrollable,
+                            //check if user drag is over a scrollable element that will trap
+                            //the event
+                            var offset =element.getBoundingClientRect();
+                            var left = offset.left;
+                            var top = offset.top;
+                            var width = offset.right-offset.left;
+                            var height = offset.bottom-offset.top;
+                            if (xStart > left && xStart < left + width) {
+                                if (yStart > top && yStart < top + height) {
+                                    found = true;
+                                }
+                            }
+                        }
+                    }
+
+                    if(!found) {
+                        //drag over no scrollable element, prevent page scroll
+                        e.preventDefault();
+                    }
+
                 }
 
-                firstMove = false;
             });
-        })();
+        } ());
     };
 
     /**
